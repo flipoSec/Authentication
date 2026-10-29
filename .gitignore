@@ -1,0 +1,10 @@
+.idea/
+*.iml
+
+auth-api/target/
+
+.env
+.env.*
+!.env.example
+
+*.log
