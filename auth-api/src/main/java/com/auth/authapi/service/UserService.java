@@ -3,6 +3,7 @@ package com.auth.authapi.service;
 import com.auth.authapi.entity.User;
 import com.auth.authapi.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,7 +15,12 @@ public class UserService {
     @Autowired
     private UserRepository userRepo;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     public User createUser(User user) {
+        String hashedPassword = passwordEncoder.encode(user.getPassword());
+        user.setPassword(hashedPassword);
         return userRepo.save(user);
     }
 
@@ -38,7 +44,8 @@ public class UserService {
 
         existingUser.setName(user.getName());
         existingUser.setEmail(user.getEmail());
-        existingUser.setPassword(user.getPassword());
+        String hashedPassword = passwordEncoder.encode(user.getPassword());
+        existingUser.setPassword(hashedPassword);
 
         return Optional.of(userRepo.save(existingUser));
     }
