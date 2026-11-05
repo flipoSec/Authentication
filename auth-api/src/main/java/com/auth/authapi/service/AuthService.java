@@ -2,6 +2,7 @@ package com.auth.authapi.service;
 
 import com.auth.authapi.entity.User;
 import com.auth.authapi.exception.EmailAlreadyExistsException;
+import com.auth.authapi.exception.InvalidCredentialsException;
 import com.auth.authapi.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,7 +42,7 @@ public class AuthService {
                 return existingUser;
             }
         }
-        throw new RuntimeException("Invalid email or password");
+        throw new InvalidCredentialsException("Invalid email or password");
     }
 
 }

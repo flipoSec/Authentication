@@ -14,12 +14,21 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ResponseEntity<Map<String, String>> handlerEmailAleardyExists(EmailAlreadyExistsException em){
+    public ResponseEntity<Map<String, String>> handlerEmailAleardyExists(EmailAlreadyExistsException ex){
         Map<String, String> error = new HashMap<>();
-        error.put("message", em.getMessage());
+        error.put("message", ex.getMessage());
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
+                .body(error);
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<Map<String, String>> handlerInvalidCredentials(InvalidCredentialsException ex){
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(error);
     }
 
