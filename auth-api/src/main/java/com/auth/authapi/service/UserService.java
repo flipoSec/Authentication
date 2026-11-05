@@ -1,7 +1,6 @@
 package com.auth.authapi.service;
 
 import com.auth.authapi.entity.User;
-import com.auth.authapi.exception.EmailAlreadyExistsException;
 import com.auth.authapi.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,15 +17,6 @@ public class UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    public User createUser(User user) {
-        if(userRepo.existsByEmail(user.getEmail())){
-            throw new EmailAlreadyExistsException("Email already exists");
-        }
-        String hashedPassword = passwordEncoder.encode(user.getPassword());
-        user.setPassword(hashedPassword);
-        return userRepo.save(user);
-    }
 
     public Optional<User> getUserById(Long id) {
         return userRepo.findById(id);

@@ -47,25 +47,6 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-    @PostMapping
-    public ResponseEntity<UserResponse> createUser(
-            @RequestBody CreateUserRequest request) {
-
-        User user = new User();
-
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
-        user.setPassword(request.getPassword());
-        User createdUser = userSrvc.createUser(user);
-        UserResponse response = new UserResponse(
-                createdUser.getId(),
-                createdUser.getName(),
-                createdUser.getEmail()
-        );
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(response);
-    }
 
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> updateUser(
