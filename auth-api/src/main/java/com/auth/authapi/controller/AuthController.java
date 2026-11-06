@@ -1,5 +1,6 @@
 package com.auth.authapi.controller;
 
+import com.auth.authapi.dto.AuthResponse;
 import com.auth.authapi.dto.LoginRequest;
 import com.auth.authapi.dto.RegisterRequest;
 import com.auth.authapi.dto.UserResponse;
@@ -35,15 +36,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserResponse> loginUser(@Valid @RequestBody LoginRequest request){
+    public ResponseEntity<AuthResponse> loginUser(@Valid @RequestBody LoginRequest request){
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword());
-        User loggedUser  = authSrvc.loginUser(user);
-        UserResponse userR = new UserResponse(loggedUser.getId(), loggedUser.getName(), loggedUser.getEmail());
+        AuthResponse authRes = authSrvc.loginUser(user);
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(userR);
+                .body(authRes);
     }
 
 
