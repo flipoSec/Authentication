@@ -1,5 +1,6 @@
 package com.auth.authapi.service;
 
+import com.auth.authapi.dto.AuthResponse;
 import com.auth.authapi.entity.User;
 import com.auth.authapi.exception.EmailAlreadyExistsException;
 import com.auth.authapi.exception.InvalidCredentialsException;
@@ -19,6 +20,9 @@ public class AuthService {
     @Autowired
     private PasswordEncoder passEncoder;
 
+    @Autowired
+    private JWTService jwtSrvc;
+
     public User registerUser(User user){
         if(userRepo.existsByEmail(user.getEmail())){
             throw new EmailAlreadyExistsException("Email already exist");
@@ -29,7 +33,7 @@ public class AuthService {
 
     }
 
-    public User loginUser(User user) {
+    public AuthResponse loginUser(User user) {
         Optional<User> userOptional = userRepo.findByEmail(user.getEmail());
         if (userOptional.isPresent()) {
             User existingUser = userOptional.get();
@@ -39,7 +43,8 @@ public class AuthService {
             );
 
             if (passwordMatches) {
-                return existingUser;
+                String token = jwtSrvc.generateToken(existingUser.getEmail());
+                return new AuthResponse(token);
             }
         }
         throw new InvalidCredentialsException("Invalid email or password");
