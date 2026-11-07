@@ -1,9 +1,13 @@
 package com.auth.authapi.service;
 
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 
@@ -33,5 +37,35 @@ public class JWTService {
                 .expiration(expiration)
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public String extractEmail(String token) {
+        return extractAllClaims(token).getSubject();
+    }
+
+
+    public Date extractExpiration(String token){
+        return extractAllClaims(token).getExpiration();
+    }
+
+    public Boolean validateToken(String token, UserDetails userDetails){
+        try {
+            final String email = extractEmail(token);
+            return email.equals(userDetails.getUsername())
+                    && userDetails.isEnabled()
+                    && userDetails.isAccountNonExpired()
+                    && userDetails.isAccountNonLocked()
+                    && userDetails.isCredentialsNonExpired();
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
     }
 }
