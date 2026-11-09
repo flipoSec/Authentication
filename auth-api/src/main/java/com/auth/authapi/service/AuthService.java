@@ -33,21 +33,9 @@ public class AuthService {
 
     }
 
-    public AuthResponse loginUser(User user) {
-        Optional<User> userOptional = userRepo.findByEmail(user.getEmail());
-        if (userOptional.isPresent()) {
-            User existingUser = userOptional.get();
-            boolean passwordMatches = passEncoder.matches(
-                    user.getPassword(),
-                    existingUser.getPassword()
-            );
-
-            if (passwordMatches) {
-                String token = jwtSrvc.generateToken(existingUser.getEmail());
-                return new AuthResponse(token);
-            }
-        }
-        throw new InvalidCredentialsException("Invalid email or password");
+    public AuthResponse loginUser(String email) {
+        String token = jwtSrvc.generateToken(email);
+        return new AuthResponse(token);
     }
 
 }
