@@ -1,7 +1,6 @@
 package com.auth.authapi.controller;
 
 import com.auth.authapi.dto.AuthResponse;
-import com.auth.authapi.dto.LoginRequest;
 import com.auth.authapi.dto.RegisterRequest;
 import com.auth.authapi.dto.UserResponse;
 import com.auth.authapi.entity.User;
@@ -11,10 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -45,5 +41,17 @@ public class AuthController {
                 .body(authRes);
     }
 
+    @GetMapping("/profile")
+    public ResponseEntity<UserResponse> userProfile(Authentication authentication){
+        String email = authentication.getName();
+        User user = authSrvc.getUserProfile(email);
+        UserResponse userResponse = new UserResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail()
+        );
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(userResponse);
+    }
 
 }

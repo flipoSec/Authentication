@@ -3,9 +3,9 @@ package com.auth.authapi.service;
 import com.auth.authapi.dto.AuthResponse;
 import com.auth.authapi.entity.User;
 import com.auth.authapi.exception.EmailAlreadyExistsException;
-import com.auth.authapi.exception.InvalidCredentialsException;
 import com.auth.authapi.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -36,6 +36,14 @@ public class AuthService {
     public AuthResponse loginUser(String email) {
         String token = jwtSrvc.generateToken(email);
         return new AuthResponse(token);
+    }
+
+    public User getUserProfile(String email){
+        Optional<User> user = userRepo.findByEmail(email);
+        if(user.isPresent()){
+            return user.get();
+        }
+        throw new UsernameNotFoundException("User Not Found");
     }
 
 }
