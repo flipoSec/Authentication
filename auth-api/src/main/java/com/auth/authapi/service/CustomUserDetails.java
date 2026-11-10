@@ -20,11 +20,13 @@ public class CustomUserDetails implements UserDetails {
     public CustomUserDetails(User user){
         this.email = user.getEmail();
         this.password = user.getPassword();
+        this.authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_"+user.getRole().name()));
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
+        return authorities;
     }
 
     @Override

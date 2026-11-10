@@ -2,6 +2,7 @@ package com.auth.authapi.service;
 
 import com.auth.authapi.dto.AuthResponse;
 import com.auth.authapi.entity.User;
+import com.auth.authapi.enums.Role;
 import com.auth.authapi.exception.EmailAlreadyExistsException;
 import com.auth.authapi.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,7 @@ public class AuthService {
         }
         String hashedPass = passEncoder.encode(user.getPassword());
         user.setPassword(hashedPass);
+        user.setRole(Role.USER);
         return userRepo.save(user);
 
     }

@@ -1,10 +1,11 @@
 package com.auth.authapi.entity;
 
+import com.auth.authapi.enums.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Generated;
 import lombok.NoArgsConstructor;
+import lombok.Value;
 
 @Entity
 @Data
@@ -18,4 +19,6 @@ public class User {
     private String name;
     private String email;
     private String password;
+    @Enumerated(EnumType.STRING)
+    private Role role;
 }
