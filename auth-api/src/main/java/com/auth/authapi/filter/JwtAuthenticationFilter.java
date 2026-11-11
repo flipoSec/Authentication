@@ -59,7 +59,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         } catch (JwtException | IllegalArgumentException |
                  UsernameNotFoundException e) {
-            // In case of invalid token or user not found : continue without authentication.
+            SecurityContextHolder.clearContext();
+            logger.warn("JWT authentication failed. Request will continue without authentication.");
         }
 
         filterChain.doFilter(request, response);
