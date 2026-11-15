@@ -1,10 +1,13 @@
 package com.auth.authapi.controller;
 
 import com.auth.authapi.dto.AuthResponse;
+import com.auth.authapi.dto.RefreshRequest;
 import com.auth.authapi.dto.RegisterRequest;
 import com.auth.authapi.dto.UserResponse;
+import com.auth.authapi.entity.RefreshToken;
 import com.auth.authapi.entity.User;
 import com.auth.authapi.service.AuthService;
+import com.auth.authapi.service.RefreshTokenService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -33,7 +36,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> loginUser(Authentication authentication) {
+    public ResponseEntity<AuthResponse> loginUser(Authentication authentication) throws Exception {
         AuthResponse authRes = authSrvc.loginUser(authentication.getName());
 
         return ResponseEntity
@@ -54,4 +57,14 @@ public class AuthController {
                 .body(userResponse);
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> createRefreshToken(@RequestBody RefreshRequest request) throws Exception {
+        AuthResponse authRes = authSrvc.refreshAccessToken(
+                request.getRefreshToken()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(authRes);
+    }
 }
