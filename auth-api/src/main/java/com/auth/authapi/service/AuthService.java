@@ -1,6 +1,7 @@
 package com.auth.authapi.service;
 
 import com.auth.authapi.dto.AuthResponse;
+import com.auth.authapi.entity.RefreshToken;
 import com.auth.authapi.entity.User;
 import com.auth.authapi.enums.Role;
 import com.auth.authapi.exception.EmailAlreadyExistsException;
@@ -24,6 +25,9 @@ public class AuthService {
     @Autowired
     private JWTService jwtSrvc;
 
+    @Autowired
+    private  RefreshTokenService refreshTokenService;
+
     public User registerUser(User user){
         if(userRepo.existsByEmail(user.getEmail())){
             throw new EmailAlreadyExistsException("Email already exist");
@@ -35,9 +39,14 @@ public class AuthService {
 
     }
 
-    public AuthResponse loginUser(String email) {
-        String token = jwtSrvc.generateToken(email);
-        return new AuthResponse(token);
+    public AuthResponse loginUser(String email) throws Exception {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User Not Found"));
+
+        String accessToken = jwtSrvc.generateToken(email);
+        String refreshToken = refreshTokenService.generateRefreshToken(user);
+
+        return new AuthResponse(accessToken, refreshToken);
     }
 
     public User getUserProfile(String email){
@@ -46,6 +55,14 @@ public class AuthService {
             return user.get();
         }
         throw new UsernameNotFoundException("User Not Found");
+    }
+
+    public AuthResponse refreshAccessToken(String rawToken) throws Exception {
+        RefreshToken refreshToken = refreshTokenService.validateRefreshToken(rawToken);
+        User user = refreshToken.getUser();
+        String accessToken = jwtSrvc.generateToken(user.getEmail());
+
+        return new AuthResponse(accessToken, rawToken);
     }
 
 }

@@ -45,7 +45,7 @@ public class RefreshTokenService {
         refreshToken.setExpires_at(
                 new Date(System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000)
         );
-        refreshToken.setToken_hash(tokenHash.toString());
+        refreshToken.setTokenHash(tokenHash.toString());
 
         refreshTokenRepo.save(refreshToken);
 
