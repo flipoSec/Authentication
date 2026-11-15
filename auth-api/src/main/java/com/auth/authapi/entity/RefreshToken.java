@@ -19,7 +19,7 @@ public class RefreshToken {
     private Long id;
 
     @Column(unique = true, nullable = false, length = 64)
-    private String token_hash;
+    private String tokenHash;
 
     @Column(nullable = false)
     private Date expires_at;
