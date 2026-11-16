@@ -3,6 +3,7 @@ package com.auth.authapi.service;
 
 import com.auth.authapi.entity.RefreshToken;
 import com.auth.authapi.entity.User;
+import com.auth.authapi.exception.InvalidRefreshTokenException;
 import com.auth.authapi.repository.RefreshTokenRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -73,14 +74,14 @@ public class RefreshTokenService {
 
         RefreshToken refreshToken = refreshTokenRepo
                 .findByTokenHash(tokenHash.toString())
-                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+                .orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token"));
 
         if (refreshToken.getExpires_at().before(new Date())) {
-            throw new RuntimeException("Refresh token has expired");
+            throw new InvalidRefreshTokenException("Refresh token has expired");
         }
 
         if (refreshToken.getRevoked_at() != null) {
-            throw new RuntimeException("Refresh token has been revoked");
+            throw new InvalidRefreshTokenException("Refresh token has been revoked");
         }
 
         return refreshToken;
