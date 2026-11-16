@@ -58,7 +58,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> createRefreshToken(@RequestBody RefreshRequest request) throws Exception {
+    public ResponseEntity<AuthResponse> createRefreshToken(@Valid @RequestBody RefreshRequest request) throws Exception {
         AuthResponse authRes = authSrvc.refreshAccessToken(
                 request.getRefreshToken()
         );

@@ -1,5 +1,6 @@
 package com.auth.authapi.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RefreshRequest {
-
+    
+    @NotBlank(message = "Refresh token is required")
     private String refreshToken;
 }
