@@ -2,12 +2,14 @@ package com.auth.authapi.filter;
 
 import com.auth.authapi.service.CustomUserDetailsService;
 import com.auth.authapi.service.JWTService;
+import com.auth.authapi.service.RedisService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,6 +29,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private JWTService jwtSrvc;
 
+    @Autowired
+    private RedisService redisSrvc;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");
@@ -43,17 +48,50 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails = cstmUserSrvc.loadUserByUsername(email);
 
                 if (jwtSrvc.validateToken(token, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities());
 
-                    authToken.setDetails(new WebAuthenticationDetailsSource()
-                            .buildDetails(request)
-                    );
+                    String jti = jwtSrvc.extractJti(token);
 
-                    SecurityContextHolder.getContext()
-                            .setAuthentication(authToken);
+                    // Reject tokens that don't contain a JTI
+                    if (jti == null || jti.isBlank()) {
+                        SecurityContextHolder.clearContext();
+                        logger.warn("JWT authentication failed: missing JTI.");
+                    } else {
+                        boolean revoked;
+                        try {
+                            revoked = redisSrvc.isTokenRevoked(jti);
+                        } catch (DataAccessException e) {
+                            SecurityContextHolder.clearContext();
+
+                            logger.error("Redis is unavailable. Cannot verify token revocation status.");
+
+                            response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+                            response.setContentType("application/json");
+                            response.getWriter().write(
+                                    "{\"message\":\"Token revocation service is unavailable\"}"
+                            );
+
+                            return;
+                        }
+                        if (!revoked) {
+                            UsernamePasswordAuthenticationToken authToken =
+                                    new UsernamePasswordAuthenticationToken(
+                                            userDetails,
+                                            null,
+                                            userDetails.getAuthorities()
+                                    );
+
+                            authToken.setDetails(
+                                    new WebAuthenticationDetailsSource().buildDetails(request)
+                            );
+
+                            SecurityContextHolder.getContext()
+                                    .setAuthentication(authToken);
+
+                        } else {
+                            SecurityContextHolder.clearContext();
+                            logger.warn("Token have been revoked.");
+                        }
+                    }
                 }
             }
 
