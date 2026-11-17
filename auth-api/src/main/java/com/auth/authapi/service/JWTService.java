@@ -13,6 +13,7 @@ import javax.crypto.SecretKey;
 
 import io.jsonwebtoken.Jwts;
 import java.util.Date;
+import java.util.UUID;
 
 @Service
 public class JWTService {
@@ -28,11 +29,12 @@ public class JWTService {
     public String generateToken(String email) {
 
         Date now = new Date();
-
-        Date expiration = new Date(now.getTime() + 86400000);
+        Date expiration = new Date(now.getTime()  + 15 * 60 * 1000L);
+        String jti = UUID.randomUUID().toString();
 
         return Jwts.builder()
                 .subject(email)
+                .id(jti)
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(getSigningKey())
@@ -51,6 +53,9 @@ public class JWTService {
         return extractAllClaims(token).getSubject();
     }
 
+    public String extractJti(String token) {
+        return extractAllClaims(token).getId();
+    }
 
     public Date extractExpiration(String token){
         return extractAllClaims(token).getExpiration();
