@@ -5,12 +5,14 @@ import com.auth.authapi.entity.RefreshToken;
 import com.auth.authapi.entity.User;
 import com.auth.authapi.enums.Role;
 import com.auth.authapi.exception.EmailAlreadyExistsException;
+import com.auth.authapi.exception.InvalidRefreshTokenException;
 import com.auth.authapi.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.Optional;
 
 
@@ -27,6 +29,9 @@ public class AuthService {
 
     @Autowired
     private  RefreshTokenService refreshTokenService;
+
+    @Autowired
+    private RedisService redisSrvc;
 
     public User registerUser(User user){
         if(userRepo.existsByEmail(user.getEmail())){
@@ -65,4 +70,25 @@ public class AuthService {
         return new AuthResponse(accessToken, rawToken);
     }
 
+    public void logoutUser(String email, String accessToken, String rawRefreshToken) throws Exception {
+        // validate refresh token
+        RefreshToken refreshToken = refreshTokenService.validateRefreshToken(rawRefreshToken);
+
+        // check if refresh token belongs to authenticated user
+        if (email.equals(refreshToken.getUser().getEmail())) {
+            // extract access token information
+            String jti = jwtSrvc.extractJti(accessToken);
+            Date expiration = jwtSrvc.extractExpiration(accessToken);
+
+            // revoke refresh token in PostgreSQL
+            refreshTokenService.revokeToken(refreshToken);
+
+            // revoke access token in Redis
+            redisSrvc.revokeToken(jti, expiration);
+        }
+        else{
+            throw new InvalidRefreshTokenException("Invalid refresh token");
+        }
+
+    }
 }
