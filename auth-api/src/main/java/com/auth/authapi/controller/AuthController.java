@@ -1,9 +1,6 @@
 package com.auth.authapi.controller;
 
-import com.auth.authapi.dto.AuthResponse;
-import com.auth.authapi.dto.RefreshRequest;
-import com.auth.authapi.dto.RegisterRequest;
-import com.auth.authapi.dto.UserResponse;
+import com.auth.authapi.dto.*;
 import com.auth.authapi.entity.RefreshToken;
 import com.auth.authapi.entity.User;
 import com.auth.authapi.service.AuthService;
@@ -66,5 +63,22 @@ public class AuthController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(authRes);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logoutUser(Authentication auth,
+            @RequestHeader("Authorization") String authorizationHeader,
+            @Valid @RequestBody LogoutRequest request) throws Exception {
+
+        String accessToken = authorizationHeader.substring(7);
+        authSrvc.logoutUser(
+                auth.getName(),
+                accessToken,
+                request.getRefreshToken()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .build();
     }
 }
