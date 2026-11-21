@@ -1,6 +1,5 @@
 package com.auth.authapi.service;
 
-
 import com.auth.authapi.entity.RefreshToken;
 import com.auth.authapi.entity.User;
 import com.auth.authapi.exception.InvalidRefreshTokenException;
@@ -15,6 +14,7 @@ import java.util.Date;
 
 @Service
 public class RefreshTokenService {
+
     @Autowired
     private RefreshTokenRepository refreshTokenRepo;
 
@@ -29,14 +29,7 @@ public class RefreshTokenService {
                 .encodeToString(randomBytes);
 
         // hash
-        MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
-        byte[] hashBytes = messageDigest.digest(rawToken.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-
-        StringBuilder tokenHash = new StringBuilder();
-
-        for (byte b : hashBytes) {
-            tokenHash.append(String.format("%02x", b));
-        }
+        String tokenHash = hashToken(rawToken);
 
         // store hash in db
         RefreshToken refreshToken = new RefreshToken();
@@ -46,19 +39,46 @@ public class RefreshTokenService {
         refreshToken.setExpires_at(
                 new Date(System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000)
         );
-        refreshToken.setTokenHash(tokenHash.toString());
+        refreshToken.setTokenHash(tokenHash);
 
         refreshTokenRepo.save(refreshToken);
 
         return rawToken;
     }
 
-    public void revokeToken(RefreshToken refreshToken){
+    public void revokeToken(RefreshToken refreshToken) {
+
         refreshToken.setRevoked_at(new Date());
         refreshTokenRepo.save(refreshToken);
     }
 
     public RefreshToken validateRefreshToken(String rawToken) throws Exception {
+
+        String tokenHash = hashToken(rawToken);
+
+        RefreshToken refreshToken = refreshTokenRepo
+                .findByTokenHash(tokenHash)
+                .orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token"));
+
+        validateTokenStatus(refreshToken);
+
+        return refreshToken;
+    }
+
+    public RefreshToken validateRefreshTokenWithLock(String rawToken) throws Exception {
+
+        String tokenHash = hashToken(rawToken);
+
+        RefreshToken refreshToken = refreshTokenRepo
+                .findByTokenHashWithLock(tokenHash)
+                .orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token"));
+
+        validateTokenStatus(refreshToken);
+
+        return refreshToken;
+    }
+
+    private String hashToken(String rawToken) throws Exception {
 
         MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
 
@@ -72,9 +92,10 @@ public class RefreshTokenService {
             tokenHash.append(String.format("%02x", b));
         }
 
-        RefreshToken refreshToken = refreshTokenRepo
-                .findByTokenHash(tokenHash.toString())
-                .orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token"));
+        return tokenHash.toString();
+    }
+
+    private void validateTokenStatus(RefreshToken refreshToken) {
 
         if (refreshToken.getExpires_at().before(new Date())) {
             throw new InvalidRefreshTokenException("Refresh token has expired");
@@ -83,7 +104,5 @@ public class RefreshTokenService {
         if (refreshToken.getRevoked_at() != null) {
             throw new InvalidRefreshTokenException("Refresh token has been revoked");
         }
-
-        return refreshToken;
     }
 }
