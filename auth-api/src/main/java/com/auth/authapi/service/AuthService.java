@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.Optional;
@@ -62,12 +63,22 @@ public class AuthService {
         throw new UsernameNotFoundException("User Not Found");
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public AuthResponse refreshAccessToken(String rawToken) throws Exception {
-        RefreshToken refreshToken = refreshTokenService.validateRefreshToken(rawToken);
+        // Validate old refresh token with database lock
+        RefreshToken refreshToken = refreshTokenService.validateRefreshTokenWithLock(rawToken);
         User user = refreshToken.getUser();
-        String accessToken = jwtSrvc.generateToken(user.getEmail());
 
-        return new AuthResponse(accessToken, rawToken);
+        // Revoke old refresh token
+        refreshTokenService.revokeToken(refreshToken);
+
+        // Generate new refresh token
+        String newRefreshToken = refreshTokenService.generateRefreshToken(user);
+
+        // Generate new access token
+        String newAccessToken = jwtSrvc.generateToken(user.getEmail());
+
+        return new AuthResponse(newAccessToken, newRefreshToken);
     }
 
     public void logoutUser(String email, String accessToken, String rawRefreshToken) throws Exception {
