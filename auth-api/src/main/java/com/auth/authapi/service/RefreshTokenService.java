@@ -105,4 +105,10 @@ public class RefreshTokenService {
             throw new InvalidRefreshTokenException("Refresh token has been revoked");
         }
     }
+
+    public void revokeAllUserTokens(User user) {
+
+        refreshTokenRepo.revokeAllByUserId(user.getId(), new Date()
+        );
+    }
 }

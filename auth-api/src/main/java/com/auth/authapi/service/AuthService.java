@@ -1,6 +1,7 @@
 package com.auth.authapi.service;
 
 import com.auth.authapi.dto.AuthResponse;
+import com.auth.authapi.dto.ChangePasswordRequest;
 import com.auth.authapi.entity.RefreshToken;
 import com.auth.authapi.entity.User;
 import com.auth.authapi.enums.Role;
@@ -8,10 +9,12 @@ import com.auth.authapi.exception.EmailAlreadyExistsException;
 import com.auth.authapi.exception.InvalidRefreshTokenException;
 import com.auth.authapi.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Date;
 import java.util.Optional;
@@ -49,7 +52,7 @@ public class AuthService {
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User Not Found"));
 
-        String accessToken = jwtSrvc.generateToken(email);
+        String accessToken = jwtSrvc.generateToken(email, user.getTokenVersion());
         String refreshToken = refreshTokenService.generateRefreshToken(user);
 
         return new AuthResponse(accessToken, refreshToken);
@@ -76,7 +79,7 @@ public class AuthService {
         String newRefreshToken = refreshTokenService.generateRefreshToken(user);
 
         // Generate new access token
-        String newAccessToken = jwtSrvc.generateToken(user.getEmail());
+        String newAccessToken = jwtSrvc.generateToken(user.getEmail(), user.getTokenVersion());
 
         return new AuthResponse(newAccessToken, newRefreshToken);
     }
@@ -101,5 +104,43 @@ public class AuthService {
             throw new InvalidRefreshTokenException("Invalid refresh token");
         }
 
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void changePassword( String email, ChangePasswordRequest request) throws Exception {
+
+        // Find user
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User Not Found"));
+
+        // Verify current password
+        if (passEncoder.matches(request.getCurrentPassword(), user.getPassword()) == false) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+        }
+
+        // Verify new password confirmation
+        if (request.getNewPassword().equals(request.getConfirmNewPassword()) == false) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password confirmation does not match");
+        }
+
+        // Prevent using the same password
+        if (passEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from current password");
+        }
+
+        // Hash new password
+        user.setPassword(passEncoder.encode(request.getNewPassword()));
+
+        // Increment token version to invalidate old access tokens
+        user.setTokenVersion(user.getTokenVersion() + 1);
+
+        // Update new password
+        userRepo.save(user);
+
+        // Revoke all old refresh tokens
+        refreshTokenService.revokeAllUserTokens(user);
+
+        // Revoke all old refresh tokens
+        refreshTokenService.revokeAllUserTokens(user);
     }
 }

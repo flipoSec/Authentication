@@ -26,7 +26,7 @@ public class JWTService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String email) {
+    public String generateToken(String email, Integer tokenVersion) {
 
         Date now = new Date();
         Date expiration = new Date(now.getTime()  + 15 * 60 * 1000L);
@@ -35,6 +35,7 @@ public class JWTService {
         return Jwts.builder()
                 .subject(email)
                 .id(jti)
+                .claim("tokenVersion", tokenVersion)
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(getSigningKey())
@@ -72,5 +73,9 @@ public class JWTService {
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    public Integer extractTokenVersion(String token){
+        return extractAllClaims(token).get("tokenVersion", Integer.class);
     }
 }

@@ -1,5 +1,6 @@
 package com.auth.authapi.filter;
 
+import com.auth.authapi.service.CustomUserDetails;
 import com.auth.authapi.service.CustomUserDetailsService;
 import com.auth.authapi.service.JWTService;
 import com.auth.authapi.service.RedisService;
@@ -49,47 +50,60 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 if (jwtSrvc.validateToken(token, userDetails)) {
 
-                    String jti = jwtSrvc.extractJti(token);
+                    // Extract token version from JWT
+                    Integer tokenVersion = jwtSrvc.extractTokenVersion(token);
 
-                    // Reject tokens that don't contain a JTI
-                    if (jti == null || jti.isBlank()) {
+                    // Get current token version from database
+                    Integer currentTokenVersion = ((CustomUserDetails) userDetails).getTokenVersion();
+
+                    // Compare both versions
+                    if (tokenVersion == null || tokenVersion.equals(currentTokenVersion) == false) {
                         SecurityContextHolder.clearContext();
-                        logger.warn("JWT authentication failed: missing JTI.");
+                        logger.warn("JWT authentication failed: invalid token version.");
+
                     } else {
-                        boolean revoked;
-                        try {
-                            revoked = redisSrvc.isTokenRevoked(jti);
-                        } catch (DataAccessException e) {
+                        String jti = jwtSrvc.extractJti(token);
+
+                        // Reject tokens that don't contain a JTI
+                        if (jti == null || jti.isBlank()) {
                             SecurityContextHolder.clearContext();
-
-                            logger.error("Redis is unavailable. Cannot verify token revocation status.");
-
-                            response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
-                            response.setContentType("application/json");
-                            response.getWriter().write(
-                                    "{\"message\":\"Token revocation service is unavailable\"}"
-                            );
-
-                            return;
-                        }
-                        if (!revoked) {
-                            UsernamePasswordAuthenticationToken authToken =
-                                    new UsernamePasswordAuthenticationToken(
-                                            userDetails,
-                                            null,
-                                            userDetails.getAuthorities()
-                                    );
-
-                            authToken.setDetails(
-                                    new WebAuthenticationDetailsSource().buildDetails(request)
-                            );
-
-                            SecurityContextHolder.getContext()
-                                    .setAuthentication(authToken);
-
+                            logger.warn("JWT authentication failed: missing JTI.");
                         } else {
-                            SecurityContextHolder.clearContext();
-                            logger.warn("Token have been revoked.");
+                            boolean revoked;
+                            try {
+                                revoked = redisSrvc.isTokenRevoked(jti);
+                            } catch (DataAccessException e) {
+                                SecurityContextHolder.clearContext();
+
+                                logger.error("Redis is unavailable. Cannot verify token revocation status.");
+
+                                response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+                                response.setContentType("application/json");
+                                response.getWriter().write(
+                                        "{\"message\":\"Token revocation service is unavailable\"}"
+                                );
+
+                                return;
+                            }
+                            if (!revoked) {
+                                UsernamePasswordAuthenticationToken authToken =
+                                        new UsernamePasswordAuthenticationToken(
+                                                userDetails,
+                                                null,
+                                                userDetails.getAuthorities()
+                                        );
+
+                                authToken.setDetails(
+                                        new WebAuthenticationDetailsSource().buildDetails(request)
+                                );
+
+                                SecurityContextHolder.getContext()
+                                        .setAuthentication(authToken);
+
+                            } else {
+                                SecurityContextHolder.clearContext();
+                                logger.warn("Token have been revoked.");
+                            }
                         }
                     }
                 }
@@ -101,7 +115,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             logger.warn("JWT authentication failed. Request will continue without authentication.");
         }
 
+        // Continue the filter chain
         filterChain.doFilter(request, response);
-
     }
 }
