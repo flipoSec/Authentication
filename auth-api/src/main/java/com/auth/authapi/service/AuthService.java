@@ -52,7 +52,7 @@ public class AuthService {
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User Not Found"));
 
-        String accessToken = jwtSrvc.generateToken(email);
+        String accessToken = jwtSrvc.generateToken(email, user.getTokenVersion());
         String refreshToken = refreshTokenService.generateRefreshToken(user);
 
         return new AuthResponse(accessToken, refreshToken);
@@ -79,7 +79,7 @@ public class AuthService {
         String newRefreshToken = refreshTokenService.generateRefreshToken(user);
 
         // Generate new access token
-        String newAccessToken = jwtSrvc.generateToken(user.getEmail());
+        String newAccessToken = jwtSrvc.generateToken(user.getEmail(), user.getTokenVersion());
 
         return new AuthResponse(newAccessToken, newRefreshToken);
     }
@@ -107,7 +107,7 @@ public class AuthService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public AuthResponse changePassword( String email, ChangePasswordRequest request) throws Exception {
+    public void changePassword( String email, ChangePasswordRequest request) throws Exception {
 
         // Find user
         User user = userRepo.findByEmail(email)
@@ -128,17 +128,19 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from current password");
         }
 
-        // Hash and update new password
+        // Hash new password
         user.setPassword(passEncoder.encode(request.getNewPassword()));
+
+        // Increment token version to invalidate old access tokens
+        user.setTokenVersion(user.getTokenVersion() + 1);
+
+        // Update new password
         userRepo.save(user);
 
         // Revoke all old refresh tokens
         refreshTokenService.revokeAllUserTokens(user);
 
-        // Generate new tokens
-        String newAccessToken = jwtSrvc.generateToken(user.getEmail());
-        String newRefreshToken = refreshTokenService.generateRefreshToken(user);
-
-        return new AuthResponse(newAccessToken, newRefreshToken);
+        // Revoke all old refresh tokens
+        refreshTokenService.revokeAllUserTokens(user);
     }
 }
