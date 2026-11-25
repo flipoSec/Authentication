@@ -84,16 +84,16 @@ public class AuthController {
     }
 
     @PostMapping("/update")
-    public ResponseEntity<AuthResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request) throws Exception {
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) throws Exception {
 
         String email = SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getName();
 
-        AuthResponse authResponse = authSrvc.changePassword(email, request);
+        authSrvc.changePassword(email, request);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(authResponse);
+                .build();
     }
 }
