@@ -17,6 +17,7 @@ public class CustomUserDetails implements UserDetails {
     private String password;
     private List<GrantedAuthority> authorities;
     private Integer tokenVersion;
+    private boolean enabled;
 
     public CustomUserDetails(User user){
         this.email = user.getEmail();
@@ -24,6 +25,7 @@ public class CustomUserDetails implements UserDetails {
         this.authorities = List.of(
                 new SimpleGrantedAuthority("ROLE_"+user.getRole().name()));
         this.tokenVersion = user.getTokenVersion();
+        this.enabled = user.isEnabled();
     }
 
     @Override
@@ -59,7 +61,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return enabled;
     }
 
     public Integer getTokenVersion() {
