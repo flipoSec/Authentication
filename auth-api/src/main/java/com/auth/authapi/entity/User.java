@@ -22,4 +22,5 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
     private Integer tokenVersion = 0;
+    private boolean enabled = true;
 }
