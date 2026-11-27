@@ -4,18 +4,22 @@ import com.auth.authapi.dto.AuthResponse;
 import com.auth.authapi.dto.ChangePasswordRequest;
 import com.auth.authapi.entity.RefreshToken;
 import com.auth.authapi.entity.User;
+import com.auth.authapi.entity.VerificationToken;
 import com.auth.authapi.enums.Role;
 import com.auth.authapi.exception.EmailAlreadyExistsException;
 import com.auth.authapi.exception.InvalidRefreshTokenException;
 import com.auth.authapi.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.MessagingException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Date;
 import java.util.Optional;
 
@@ -37,6 +41,17 @@ public class AuthService {
     @Autowired
     private RedisService redisSrvc;
 
+    @Autowired
+    private VerificationTokenService verificationTokenService;
+
+    @Autowired
+    private EmailService emailService;
+
+    @Value("${app.base-url}")
+    private String appBaseUrl;
+
+
+    @Transactional(rollbackFor = Exception.class)
     public User registerUser(User user){
         if(userRepo.existsByEmail(user.getEmail())){
             throw new EmailAlreadyExistsException("Email already exist");
@@ -44,8 +59,28 @@ public class AuthService {
         String hashedPass = passEncoder.encode(user.getPassword());
         user.setPassword(hashedPass);
         user.setRole(Role.USER);
-        return userRepo.save(user);
+        user.setEnabled(false);
+        User savedUser = userRepo.save(user);
 
+        // Generate verification token
+        String rawToken = verificationTokenService.createVerificationToken(savedUser);
+
+        // Create verification URL
+        String verificationUrl = appBaseUrl
+                + "/api/auth/verify?token="
+                + rawToken;
+
+        // Send verification email
+        try {
+            emailService.sendVerificationEmail(
+                    savedUser.getEmail(),
+                    verificationUrl
+            );
+        } catch (MessagingException | UnsupportedEncodingException | jakarta.mail.MessagingException e) {
+            throw new IllegalStateException("Failed to send verification email", e);
+        }
+
+        return savedUser;
     }
 
     public AuthResponse loginUser(String email) throws Exception {
@@ -139,8 +174,24 @@ public class AuthService {
 
         // Revoke all old refresh tokens
         refreshTokenService.revokeAllUserTokens(user);
-
-        // Revoke all old refresh tokens
-        refreshTokenService.revokeAllUserTokens(user);
     }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void verifyEmail(String rawToken) {
+
+        // Validate verification token
+        VerificationToken verificationToken =
+                verificationTokenService.validateVerificationToken(rawToken);
+
+        // Get user linked to the token
+        User user = verificationToken.getUser();
+
+        // Enable user account
+        user.setEnabled(true);
+        userRepo.save(user);
+
+        // Mark token as used
+        verificationTokenService.markTokenAsUsed(verificationToken);
+    }
+
 }

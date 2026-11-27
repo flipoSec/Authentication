@@ -96,4 +96,13 @@ public class AuthController {
                 .status(HttpStatus.OK)
                 .build();
     }
+
+    @GetMapping("/verify")
+    public ResponseEntity<String> verifyEmail(@RequestParam String token) {
+
+        authSrvc.verifyEmail(token);
+
+        return ResponseEntity.ok("Email verified successfully. You can now login.");
+    }
+
 }
